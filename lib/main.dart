@@ -44,10 +44,24 @@ class _ProductListScreenState extends State<ProductListScreen> {
         Uri.parse('http://127.0.0.1:8000/api/products/'),
       );
 
+      print('Status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
+        List<dynamic> productList;
+
+        if (data is List) {
+          productList = data;
+        } else if (data is Map && data.containsKey('results')) {
+          productList = data['results'] ?? [];
+        } else {
+          productList = [];
+        }
+
         setState(() {
-          products = data['results'] ?? [];
+          products = productList;
           isLoading = false;
         });
       } else {
@@ -66,6 +80,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print('Products length: ${products.length}');
+    print('Error message: $errorMessage');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products - Mini E-Commerce'),
@@ -83,23 +100,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         return Card(
                           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: ListTile(
-                            leading: product['image'] != null
-                                ? Image.network(product['image'], width: 50, fit: BoxFit.cover)
+                            leading: product['image'] != null && product['image'].isNotEmpty
+                                ? Image.network(product['image'], width: 50, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image))
                                 : const Icon(Icons.image_not_supported, size: 50),
-                            title: Text(product['name']),
+                            title: Text(product['name'] ?? 'Unnamed'),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Price: \$${product['price']}'),
-                                Text('Stock: ${product['stock']}'),
-                                Text('Category: ${product['category']['name'] ?? 'None'}'),
+                                Text('Price: \$${product['price'] ?? '0.00'}'),
+                                Text('Stock: ${product['stock'] ?? 0}'),
+                                Text('Category: ${product['category']?['name'] ?? 'None'}'),
                               ],
                             ),
                             trailing: IconButton(
                               icon: const Icon(Icons.add_shopping_cart, color: Colors.green),
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Added ${product['name']} to cart')),
+                                  SnackBar(content: Text('Added ${product['name'] ?? 'item'} to cart')),
                                 );
                               },
                             ),
