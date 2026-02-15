@@ -20,7 +20,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Home screen with bottom navigation
+// ── Home screen with bottom navigation ──────────────────────────────────────
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -52,7 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Cart item model
+// ── Cart item model & global cart ───────────────────────────────────────────
+
 class CartItem {
   final Map<String, dynamic> product;
   int quantity;
@@ -60,8 +62,9 @@ class CartItem {
   CartItem(this.product, {this.quantity = 1});
 }
 
-// Global cart (simple in-memory for demo)
 List<CartItem> cartItems = [];
+
+// ── Products screen ─────────────────────────────────────────────────────────
 
 class ProductListScreen extends StatefulWidget {
   const ProductListScreen({super.key});
@@ -118,7 +121,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     }
     existing.quantity++;
 
-    setState(() {}); // refresh UI
+    setState(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Added ${product['name'] ?? 'item'} to cart')),
@@ -143,7 +146,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: ListTile(
                             leading: product['image'] != null && product['image'].isNotEmpty
-                                ? Image.network(product['image'], width: 50, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image))
+                                ? Image.network(
+                                    product['image'],
+                                    width: 50,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                                  )
                                 : const Icon(Icons.image_not_supported, size: 50),
                             title: Text(product['name'] ?? 'Unnamed'),
                             subtitle: Column(
@@ -169,6 +177,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 }
+
+// ── Cart screen ─────────────────────────────────────────────────────────────
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -216,7 +226,29 @@ class _CartScreenState extends State<CartScreen> {
                         'Grand Total: \$${total.toStringAsFixed(2)}',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                     class CheckoutScreen extends StatefulWidget {
+                      ElevatedButton(
+                        onPressed: cartItems.isEmpty
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                                );
+                              },
+                        child: const Text('Checkout'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+// ── Guest Checkout Screen ───────────────────────────────────────────────────
+
+class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
 
   @override
@@ -233,23 +265,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
-  void placeOrder() {
-    if (_nameController.text.trim().isEmpty) {
-      setState(() => message = 'Please enter your full name');
-      return;
-    }
-
-    // Dummy order creation (just clear cart for demo)
-    setState(() {
-      cartItems.clear();
-      message = 'Order placed successfully as guest: ${_nameController.text}';
-    });
-
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context);
-    });
+  void placeOrder() async {
+  if (_nameController.text.trim().isEmpty) {
+    setState(() => message = 'Please enter your full name');
+    return;
   }
 
+  // Calculate subtotal from cart
+  double subtotal = cartItems.fold(0.0, (sum, item) {
+    final price = double.tryParse(item.product['price'].toString()) ?? 0.0;
+    return sum + (item.quantity * price);
+  });
+
+  try {
+    final response = await http.post(
+      Uri.parse('http://127.0.0.1:8000/api/orders/create/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'guest_name': _nameController.text.trim(),
+        'guest_email': 'guest@example.com',
+        'status': 'pending',
+        'subtotal': subtotal,
+        'total': subtotal,
+      }),
+    );
+
+    print('POST Status: ${response.statusCode}');
+    print('POST Response: ${response.body}');
+
+    if (response.statusCode == 201) {
+      setState(() {
+        cartItems.clear();
+        message = 'Order placed successfully! (ID: ${jsonDecode(response.body)['id']})';
+      });
+
+      Future.delayed(const Duration(seconds: 2), () {
+        Navigator.pop(context);
+      });
+    } else {
+      setState(() => message = 'Order failed: ${response.body}');
+    }
+  } catch (e) {
+    setState(() => message = 'Network error: $e');
+  }
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -269,12 +328,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(height: 20),
             if (message.isNotEmpty)
-              Text(message, style: TextStyle(color: message.contains('success') ? Colors.green : Colors.red)),
+              Text(
+                message,
+                style: TextStyle(color: message.contains('success') ? Colors.green : Colors.red),
+                textAlign: TextAlign.center,
+              ),
           ],
         ),
       ),
     );
-  }
-}
   }
 }
