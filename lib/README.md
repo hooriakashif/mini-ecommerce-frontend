@@ -1,8 +1,14 @@
 # Mini E-Commerce Frontend (Flutter)
 
-- Flutter app to browse products from Django API
-- Fetches from http://127.0.0.1:8000/api/products/
-- Basic list view with name, price, category
-- Add to cart button (dummy action)
+Flutter mobile app for browsing products.
 
-Note: Web version shows blank due to CORS/localhost issue during submission time. APK build pending Android toolchain fix.
+## Features
+- Fetches products from Django backend API
+- Displays name, price, stock, category
+- Dummy add-to-cart button
+- Works in Chrome (web debug)
+
+## Run
+flutter run -d chrome
+
+API URL used: http://127.0.0.1:8000/api/products/
